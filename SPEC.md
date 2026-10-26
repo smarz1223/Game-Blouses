@@ -44,13 +44,17 @@ MARZ, KARDIAN, ADAM B, DOM, FUR, MEANY, PAT CLARK, PHIL, T-ROW, BUBBA
 Standings (with Luck and strength, rank chart, Data check), Weekly, Stat Categories, Positions, Teams, Draft (Full board, By team, Best and worst, By position, Added players), League History, Rules
 
 ## Design
-- Light page (#fbfafd), plum header (#3a1670), violet (#7b35d6), gold (#f4be1c), orange (#e9782a) used sparingly
+- Light page (#fbfafd), plum header (#3a1670), violet (#7b35d6), gold (#f4be1c), orange (#e9782a) for brand and chart series colors
+- Conditional formatting on every page: green (#2e9d57) = good, red (#d9453d) = bad, white = neutral (same convention as the other sites)
 - Fonts: Shrikhand (display), Barlow / Barlow Semi Condensed (body, tables)
 - No Chappelle skit references in copy (colors only)
 - All tables sortable; chart legend click highlights one series and greys the rest
+- Stacked bar charts (Stat Categories, Positions) rank owners top-down by total points; clicking a legend item re-ranks owners by that series, clicking again resets
+- Owner pickers (Teams, Draft > By team) are slicer buttons, one per owner, not dropdowns. Week picker on Weekly is still a dropdown
 
 ## Build
 - fetch_data.py -> data/gameblouses_data.json; build_site.py injects JSON into template.html -> index.html
 - Never edit index.html. Change template.html or fetch_data.py and let the Action rebuild
+- Repo layout is flat because GitHub drag-and-drop upload flattens folders: logo.png and favicon.png sit in the repo root next to index.html. Only refresh.yml lives in a folder (.github/workflows/). The Action creates data/ itself
 - GitHub Action: daily 11:00 UTC, manual run, and on push of source files
 - URL: gameblouses.redplanetanalytics.com (CNAME file in repo; Cloudflare CNAME `gameblouses` -> smarz1223.github.io, DNS only)
