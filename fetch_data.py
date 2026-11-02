@@ -422,6 +422,7 @@ def build_draft(picks, players, owners):
         return None
 
     drafted_keys = set()
+    pick_by_key = {}
     for pk in picks:
         u = find(pk)
         pk["fp"] = r1(u["fp"]) if u else 0.0
@@ -431,6 +432,7 @@ def build_draft(picks, players, owners):
         pk["started"] = bool(u and u["gp"])
         if u:
             drafted_keys.add(u["key"])
+            pick_by_key[u["key"]] = pk["pick"]
     # positional ranks: draft order within group vs current FP rank within group (all players who played)
     for grp in GROUP_ORDER:
         g_picks = [p for p in picks if p["group"] == grp]
@@ -473,6 +475,8 @@ def build_draft(picks, players, owners):
                         "avg_value": round(sum(p["value"] for p in mine) / len(mine), 1) if mine else 0})
     summary.sort(key=lambda x: -x["draft_fp"])
     order = [p["owner"] for p in picks if p["round"] == 1]
+    for p in players:  # draft pick number for the Players page (None = added after the draft)
+        p["draft_pick"] = pick_by_key.get(p["key"])
     return {"picks": picks, "adds": adds[:25], "summary": summary,
             "rounds": max(p["round"] for p in picks), "order": order}
 

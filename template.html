@@ -97,6 +97,7 @@ td.own{font-weight:700}
 .seg button.on{background:var(--plum);color:#fff}
 .seg.own{border-radius:16px}
 .seg .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0;box-shadow:0 0 0 1.5px #fff}
+input[type=search]{font-family:var(--cond);font-weight:600;font-size:1rem;padding:7px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);min-width:190px}
 select{font-family:var(--cond);font-weight:600;font-size:1rem;padding:7px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink)}
 
 /* ---------- matchups ---------- */
@@ -276,13 +277,13 @@ function mkChart(id,cfg){ if(charts[id]) charts[id].destroy(); const el=document
 /* ---------------- shell ---------------- */
 const PAGES = [
   ["standings","Standings"],["weekly","Weekly"],["categories","Stat Categories"],["positions","Positions"],
-  ["teams","Teams"],["draft","Draft"],["history","League History"],["rules","Rules"]
+  ["teams","Teams"],["players","Players"],["draft","Draft"],["history","League History"],["rules","Rules"]
 ];
 document.getElementById("sub").textContent = `Fantasy basketball, ${M.season} season. Updated ${M.updated}.`;
 document.getElementById("tabs").innerHTML = PAGES.map(([k,l])=>`<a href="#${k}" data-p="${k}">${l}</a>`).join("");
 document.getElementById("main").innerHTML = PAGES.map(([k])=>`<section class="page" id="p-${k}"></section>`).join("");
 document.getElementById("foot").innerHTML = `Data from the league's Yahoo stats via Google Sheets, refreshed every morning. Part of <a href="https://redplanetanalytics.com">Red Planet Analytics</a>.`;
-const RENDER = {standings:rStandings,weekly:rWeekly,categories:rCategories,positions:rPositions,teams:rTeams,draft:rDraft,history:rHistory,rules:rRules};
+const RENDER = {standings:rStandings,weekly:rWeekly,categories:rCategories,positions:rPositions,teams:rTeams,players:rPlayers,draft:rDraft,history:rHistory,rules:rRules};
 const done = {};
 function go(){
   let k = (location.hash||"#standings").slice(1).split("-")[0];
@@ -499,6 +500,95 @@ function rTeams(el){
     </div>`;
   };
   segWire("tm-sel","o",show); show(OWNERS[0]);
+}
+
+/* ================= PLAYERS ================= */
+function rPlayers(el){
+  const ALL = D.players, K = D.stat_keys;
+  if(!ALL.length){ el.innerHTML = `<h2 class="pt">Players</h2><p class="empty">No players have scored yet.</p>`; return; }
+  const posList = [...new Set(ALL.map(p=>p.pos))].sort((a,b)=>a.split(",").length-b.split(",").length||a.localeCompare(b));
+  const maxGP = Math.max(...ALL.map(p=>p.gp));
+  const mins = [1].concat([3,5,10,20,40].filter(n=>n<=maxGP));
+  const avgFP = ALL.reduce((a,p)=>a+p.fp,0)/ALL.length, avgFPG = ALL.reduce((a,p)=>a+p.fpg,0)/ALL.length;
+  const norm = s=>String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  const st = {owners:new Set(), pos:new Set(), min:1, q:""};
+  const match = p => (!st.owners.size||st.owners.has(p.owner)) && (!st.pos.size||st.pos.has(p.pos)) && p.gp>=st.min && (!st.q||norm(p.player).includes(st.q));
+  el.innerHTML = `
+  <h2 class="pt">Players</h2>
+  <p class="lede">Every player on any owner's game log this season. Dot size shows games played, and dot color matches the owner buttons. Filters grey out dots on the chart and remove rows from the table.</p>
+  <div class="ctl"><div class="seg own" id="pl-own" role="group" aria-label="Owner filter"><button data-o="" class="on">All owners</button>${OWNERS.map(o=>`<button data-o="${esc(o)}"><i class="dot" style="background:${OC[o]}"></i>${esc(o)}</button>`).join("")}</div></div>
+  <div class="ctl">
+    <div class="seg" id="pl-pos" role="group" aria-label="Eligibility filter"><button data-p="" class="on">All positions</button>${posList.map(x=>`<button data-p="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+    ${mins.length>1?`<div class="seg" id="pl-min" role="group" aria-label="Minimum games">${mins.map((n,i)=>`<button data-n="${n}" class="${i?"":"on"}">${i?n+"+ games":"Any games"}</button>`).join("")}</div>`:""}
+    <input id="pl-q" type="search" placeholder="Search player" aria-label="Search player">
+  </div>
+  <p class="note" id="pl-count" style="margin:0 0 10px"></p>
+  <div class="panel"><div class="chartbox tall"><canvas id="c-players"></canvas></div>
+  <p class="note">Dashed lines are the player averages (${f0(avgFP)} total FP, ${f1(avgFPG)} per game). Top right is volume plus output; top left is big per-game output on fewer games. Hover a dot for the stat line.</p></div>
+  <div id="pl-table"></div>`;
+  const rad = p => 5+8*Math.sqrt(p.gp/maxGP);
+  const plot = () => { const on=ALL.filter(match), off=ALL.filter(p=>!match(p));
+    return off.map(p=>({x:p.fp,y:p.fpg,p,on:false})).concat(on.map(p=>({x:p.fp,y:p.fpg,p,on:true}))); };
+  const plug = {id:"plAvg",afterDatasetsDraw(ch){
+    const {ctx,chartArea:a,scales:{x,y}} = ch;
+    ctx.save();
+    const xp=x.getPixelForValue(avgFP), yp=y.getPixelForValue(avgFPG);
+    ctx.setLineDash([5,4]); ctx.strokeStyle="rgba(35,23,58,.35)"; ctx.lineWidth=1.5;
+    if(xp>=a.left&&xp<=a.right){ctx.beginPath();ctx.moveTo(xp,a.top);ctx.lineTo(xp,a.bottom);ctx.stroke();}
+    if(yp>=a.top&&yp<=a.bottom){ctx.beginPath();ctx.moveTo(a.left,yp);ctx.lineTo(a.right,yp);ctx.stroke();}
+    ctx.setLineDash([]); ctx.fillStyle="#6b5f80"; ctx.font='600 12px "Barlow Semi Condensed", sans-serif'; ctx.textBaseline="alphabetic";
+    if(xp>=a.left&&xp<=a.right){ctx.textAlign="left";ctx.fillText("Avg "+f0(avgFP)+" FP",xp+4,a.top+12);}
+    if(yp>=a.top&&yp<=a.bottom){ctx.textAlign="right";ctx.fillText("Avg "+f1(avgFPG)+" per game",a.right-4,yp-4);}
+    // name labels: top totals and top per-game among highlighted dots, skipping overlaps
+    const pts=ch.data.datasets[0].data, meta=ch.getDatasetMeta(0);
+    const on=pts.map((d,i)=>({d,i})).filter(o=>o.d.on);
+    const pick=new Set();
+    if(on.length<=12) on.forEach(o=>pick.add(o.i));
+    else{ on.slice().sort((q,r)=>r.d.x-q.d.x).slice(0,6).forEach(o=>pick.add(o.i)); on.slice().sort((q,r)=>r.d.y-q.d.y).slice(0,3).forEach(o=>pick.add(o.i)); }
+    const boxes=[]; ctx.font='600 12px "Barlow Semi Condensed", sans-serif'; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.lineJoin="round";
+    pick.forEach(i=>{ const e=meta.data[i]; if(!e) return; const t=pts[i].p.player, w=ctx.measureText(t).width, r0=(e.options&&e.options.radius)||8;
+      let tx=e.x+r0+4; if(tx+w>a.right) tx=e.x-r0-4-w;
+      const b={x:tx,y:e.y-7,w:w,h:14};
+      if(boxes.some(o=>!(b.x>o.x+o.w||b.x+b.w<o.x||b.y>o.y+o.h||b.y+b.h<o.y))) return;
+      boxes.push(b); ctx.lineWidth=3; ctx.strokeStyle="rgba(255,255,255,.9)"; ctx.strokeText(t,tx,e.y); ctx.fillStyle="#23173a"; ctx.fillText(t,tx,e.y); });
+    ctx.restore(); }};
+  mkChart("c-players",{type:"scatter",plugins:[plug],
+    data:{datasets:[{data:plot(),
+      pointBackgroundColor:c=>c.raw&&c.raw.on?hex2rgba(OC[c.raw.p.owner],.92):"rgba(160,150,180,.28)",
+      pointBorderColor:c=>c.raw&&c.raw.on?"#fff":"rgba(160,150,180,.35)",
+      pointBorderWidth:1.5,
+      pointRadius:c=>c.raw?rad(c.raw.p):6, pointHoverRadius:c=>c.raw?rad(c.raw.p)+2:8}]},
+    options:{maintainAspectRatio:false,
+      scales:{x:{grace:"5%",title:{display:true,text:"Total fantasy points"}},y:{grace:"5%",title:{display:true,text:"Fantasy points per game"}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:i=>i[0].raw.p.player,
+        label:i=>{const p=i.raw.p; return [`${p.owner}, ${p.pos}, ${p.nba}`,`${p.gp} GP, ${f1(p.fp)} FP, ${f1(p.fpg)} per game`,K.map(k=>k+" "+p.stats[k]).join(", ")];}}}}}});
+  let lastT=null;
+  const sync = ()=>{
+    const rows = ALL.filter(match);
+    document.querySelectorAll("#pl-own button").forEach(b=>b.classList.toggle("on",b.dataset.o?st.owners.has(b.dataset.o):!st.owners.size));
+    document.querySelectorAll("#pl-pos button").forEach(b=>b.classList.toggle("on",b.dataset.p?st.pos.has(b.dataset.p):!st.pos.size));
+    document.querySelectorAll("#pl-min button").forEach(b=>b.classList.toggle("on",+b.dataset.n===st.min));
+    document.getElementById("pl-count").textContent = `Showing ${rows.length} of ${ALL.length} players`;
+    const ch = charts["c-players"]; if(ch){ ch.data.datasets[0].data = plot(); ch.update(); }
+    const prev = lastT && TABLES[lastT];
+    if(!rows.length){ document.getElementById("pl-table").innerHTML = `<p class="empty">No players match these filters.</p>`; lastT=null; return; }
+    const cols = [{k:"player",label:"Player",cls:"l",asc:true},
+      {k:"owner",label:"Owner",cls:"l own",asc:true,fmt:r=>`<i class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${OC[r.owner]}"></i>${esc(r.owner)}`},
+      {k:"nba",label:"NBA",cls:"c"},{k:"pos",label:"Elig.",cls:"c"},{k:"gp",label:"GP"}]
+      .concat(K.map(k=>({label:k,sort:r=>r.stats[k],fmt:r=>r.stats[k]})))
+      .concat([{k:"fp",label:"FP",fmt:r=>f1(r.fp)},{k:"fpg",label:"FP / G",fmt:r=>f1(r.fpg)},
+        {label:"Draft pick",cls:"c",asc:true,sort:r=>r.draft_pick==null?9999:r.draft_pick,fmt:r=>r.draft_pick!=null?"#"+r.draft_pick:(D.draft?"Added":"")}]);
+    document.getElementById("pl-table").innerHTML = table(cols, rows, {sortK:prev?prev.sortK:5+K.length, dir:prev?prev.dir:-1});
+    lastT = "t"+(TID-1);
+  };
+  const multi = (id,attr,set) => document.getElementById(id).addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return; const v=b.dataset[attr];
+    if(!v) set.clear(); else if(set.has(v)) set.delete(v); else set.add(v); sync(); });
+  multi("pl-own","o",st.owners); multi("pl-pos","p",st.pos);
+  const mn = document.getElementById("pl-min"); if(mn) mn.addEventListener("click",e=>{const b=e.target.closest("button"); if(!b) return; st.min=+b.dataset.n; sync();});
+  document.getElementById("pl-q").addEventListener("input",e=>{ st.q=norm(e.target.value.trim()); sync(); });
+  sync();
 }
 
 /* ================= DRAFT ================= */

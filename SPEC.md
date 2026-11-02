@@ -41,7 +41,7 @@ MARZ, KARDIAN, ADAM B, DOM, FUR, MEANY, PAT CLARK, PHIL, T-ROW, BUBBA
 - Draft value = draft rank within position group - current FP rank within group (all players with games). Drafted players with no games share last rank
 
 ## Pages
-Standings (with Luck and strength, rank chart, Data check), Weekly, Stat Categories, Positions, Teams, Draft (Full board, By team, Best and worst, By position, Added players), League History, Rules
+Standings (with Luck and strength, rank chart, Data check), Weekly, Stat Categories, Positions, Teams, Players (scatter of total FP vs FP per game, dot size = games, owner / raw eligibility / min games / search filters grey out dots and filter the table, draft pick column), Draft (Full board, By team, Best and worst, By position, Added players), League History, Rules
 
 ## Design
 - Light page (#fbfafd), plum header (#3a1670), violet (#7b35d6), gold (#f4be1c), orange (#e9782a) for brand and chart series colors
