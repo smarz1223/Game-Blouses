@@ -160,22 +160,39 @@ def build_matchups(entries, owners):
 
 
 # ----------------------------------------------------------------- PLAYERS
-NAME_RE = re.compile(
-    r"^(?P<name>.*?)(?P<status>INJ|SUSP|GTD|DTD|NA|O|D)?"
-    r"(?:No new player Notes|New Player Note|Player Note)"
+MARKER_RE = re.compile(
+    r"^(?P<pre>.*?)(?:No new player Notes|New Player Note|Player Note)"
     r"(?P<team>[A-Z]{2,4}) - (?P<pos>[A-Z,]+)", re.S)
+
+
+def split_status(pre):
+    """Yahoo glues an injury flag (O, D, Q, P, INJ, GTD, DTD, NA, SUSP ...) straight onto the end of the name.
+    Rather than keep a list of flags, strip any 1-4 capital letters stuck to a name that does not end in a capital.
+    Roman numerals (II, III, IV) are real name suffixes and are kept."""
+    pre = pre.strip()
+    if re.search(r"\s(?:III|II|IV)$", pre):
+        return pre, None
+    m = re.match(r"^(.*\s(?:III|II|IV))([A-Z]{1,4})$", pre)
+    if m:
+        return m.group(1), m.group(2)
+    m = re.match(r"^(.*[^A-Z\s])([A-Z]{1,4})$", pre)
+    if m:
+        return m.group(1), m.group(2)
+    return pre, None
 
 
 def parse_player(raw):
     s = str(raw).strip()
-    m = NAME_RE.match(s)
+    m = MARKER_RE.match(s)
     if not m:
         first = s.split("\n")[0]
         m2 = re.match(r"^(.*?)\s*\(?([A-Z]{2,4}) - ([A-Z,]+)\)?", first)
         if m2:
-            return m2.group(1).strip(), None, m2.group(2), m2.group(3).split(",")
+            name, status = split_status(m2.group(1))
+            return name, status, m2.group(2), m2.group(3).split(",")
         return first, None, "", []
-    return m.group("name").strip(), m.group("status"), m.group("team"), m.group("pos").split(",")
+    name, status = split_status(m.group("pre"))
+    return name, status, m.group("team"), m.group("pos").split(",")
 
 
 def pos_group(positions):
@@ -207,6 +224,8 @@ def read_players(wb, mods, owners):
             log_totals[o] = r2(fantasy_points(stats, mods))
             continue
         name, status, nba, pos = parse_player(r[name_i])
+        if re.search(r"[^A-Z\s][A-Z]{1,4}$", name):
+            flag(f"Player name may still carry a status flag: {name}")
         fp = fantasy_points(stats, mods)
         gp = int(num(r[gp_i]))
         players.append({"owner": o, "player": name, "key": name_key(name), "nba": nba,
@@ -419,6 +438,10 @@ def build_draft(picks, players, owners):
         cands = skeys.get(short_key(pk["player"]), [])
         if len(cands) == 1:
             return cands[0]
+        near = [u for key, u in uniq.items() if key.startswith(k) and len(key) - len(k) <= 4]
+        if len(near) == 1:
+            flag(f"Draft name matched loosely: {pk['player']} -> {near[0]['player']}")
+            return near[0]
         return None
 
     drafted_keys = set()

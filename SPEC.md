@@ -29,7 +29,7 @@ MARZ, KARDIAN, ADAM B, DOM, FUR, MEANY, PAT CLARK, PHIL, T-ROW, BUBBA
 - A week counts only when all 10 teams have Points For and Points Against entered
 - Matchups are inferred from mirrored PF/PA (no opponent column)
 - Consolidated Data = Yahoo team logs, season to date, active-slot stats only. Every player who ever scored for an owner stays listed after being dropped; players appear only after their first game
-- Player string parsing: `Name` + optional status (O, D, INJ, GTD, DTD, SUSP, NA) + `Player Note` / `New Player Note` + `TEAM - POS` + optional game time
+- Player string parsing: `Name` + a Yahoo status flag glued to the name (O, D, Q, P, INJ, GTD, DTD, SUSP, NA ...) + `Player Note` / `New Player Note` + `TEAM - POS` + optional game time. The flag is any 1-4 capital letters stuck to a name that does not end in a capital, so new flags need no code change; II / III / IV suffixes are kept as part of the name. The pipeline flags any name that still looks like it carries a flag, and any draft name matched loosely
 - Draft names match to game log names by normalized full name, then first initial + last name (handles "N. Alexander-Walker")
 
 ## Formulas

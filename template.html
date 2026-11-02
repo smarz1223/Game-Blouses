@@ -493,7 +493,7 @@ function rTeams(el){
     <h3>Roster production</h3>
     ${table([{k:"player",label:"Player",cls:"l",asc:true},{k:"status",label:"Status",cls:"c",fmt:r=>r.status?`<span class="chip o">${esc(r.status)}</span>`:""},{k:"nba",label:"NBA",cls:"c"},{k:"pos",label:"Elig.",cls:"c"},{k:"group",label:"Group",cls:"c"},{k:"gp",label:"GP"}]
       .concat(K.map(k=>({label:k,sort:r=>r.stats[k],fmt:r=>r.stats[k]}))).concat([{k:"fp",label:"FP",fmt:r=>f1(r.fp)},{k:"fpg",label:"FP / G",fmt:r=>f1(r.fpg)}]), ps, {sortK:6+K.length,dir:-1})}
-    <p class="note">Status from Yahoo: O is out, D is day-to-day, INJ is injured.</p>
+    <p class="note">Status flags come straight from Yahoo, for example O (out), D (day-to-day), Q (questionable), P (probable), INJ (injured).</p>
     <div class="grid2">
       <div><h3>Results</h3>${table([{k:"week",label:"Week",cls:"c",asc:true,fmt:r=>(r.playoff?"P":"")+r.week},{k:"opp",label:"Opponent",cls:"l own",asc:true},{k:"res",label:"Result",cls:"c",fmt:r=>`<span class="form"><i class="${r.res}">${r.res}</i></span>`},{k:"pf",label:"For",fmt:r=>f1(r.pf)},{k:"pa",label:"Against",fmt:r=>f1(r.pa)}], res, {sortK:0,dir:1})}</div>
       <div><h3>Head to head</h3>${table([{k:"opp",label:"Opponent",cls:"l own",asc:true},{label:"Record",cls:"c",fmt:r=>r.w+"-"+r.l+(r.t?"-"+r.t:""),sort:r=>r.w-r.l}], Object.keys(h2h).map(k=>Object.assign({opp:k},h2h[k])))}</div>
